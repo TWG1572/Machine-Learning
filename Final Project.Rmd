@@ -1,0 +1,70 @@
+---
+date: "10/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Loading Data and Libraries 
+```{r}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(rattle)
+
+train <- read.csv("~/Downloads/pml-training.csv")
+test <- read.csv("~/Downloads/pml-testing.csv")
+```
+### Data Cleansing and Partitioning
+Removing columns that are primarily #NA values using a 95% threshold 
+```{r}
+train <- train[,colMeans(is.na(train)) <.95]
+```
+Removing non-numeric data (column 1-7)
+```{r}
+train <- train[-c(1:7)]
+```
+Removing variables with nearly zero variance.
+```{r}
+train <- train[,-nearZeroVar(train)]
+```
+Creating a training and validation set. The testing set will be left alone.  
+```{r}
+inTrain = createDataPartition(y=train$classe, p = 0.7,list=FALSE)
+training = train[ inTrain,]
+validation = train[-inTrain,]
+```
+### Model building
+Decision Tree Model
+```{r}
+mod_rpart <- train(classe ~ ., data = training, method = "rpart")
+fancyRpartPlot(mod_rpart$finalModel,sub="")
+pred_rpart <- predict(mod_rpart,validation)
+confusionMatrix(pred_rpart,validation$classe)
+```
+Gradient Boosted Trees
+```
+mod_gbm <- train(classe ~ ., data = training, method = "gbm",verbose=FALSE)
+pred_gbm <- predict(mod_gbm,validation)
+confusionMatrix(pred_gbm,validation$classe)
+```
+Random forest decision trees (rf)
+```
+mod_rf <-  train(classe ~ ., data = training, method = "rf")
+pred_rf <- predict(mod_rf,validation)
+confusionMatrix(pred_rf,validation$classe)
+```
+### Conclusion
+#### Result
+The confusion matrices show that the Random Forest algorithm performed better than the alternative models. The accuracy for the Random Forest model was 0.993 compared to 0.957 for the Gradient Boosted Tree model, and 0.494 for the Decision Tree model. The random Forest model is chosen.
+
+The expected out-of-sample error is estimated at 0.007, or 0.7%. 
+
+### Prediction
+Using the Random Forest model on the testing data to predict results.  
+```
+predTEST <- predict(mod_rf,test)
+predTEST
+```
+
